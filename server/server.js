@@ -8,7 +8,11 @@ const app = express();
 const port = 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(bodyParser.json({ limit: '10mb' })); // Increased limit for QR code images
 app.use(express.json());
 
@@ -22,7 +26,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Email sending endpoint
-app.post('/api/send-qr-email', async (req, res) => {
+app.post(['/api/send-qr-email', '/send-qr-email'], async (req, res) => {
   try {
     const { email, name, qrCode } = req.body;
     
@@ -377,7 +381,319 @@ function generateTicketEmailTemplate(name, email, ticketId, date, time) {
   `;
 }
 
-// Start server
+// Add MySQL support
+const mysql = require('mysql2/promise');
+
+// Database configuration
+const dbConfig = {
+  host: 'localhost',
+  port: 3306,
+  user: 'root',        // Update with your MySQL username
+  password: '',        // Update with your MySQL password
+  database: 'majistic2k25', // Update with your database name
+};
+
+// Add a test endpoint to check if server is responsive
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Server is running correctly',
+    time: new Date().toISOString(),
+    clientIp: req.ip,
+    cors: {
+      origin: req.headers.origin,
+      allowed: true
+    }
+  });
+});
+
+// Add a debug endpoint to get database structure information
+app.get('/api/dbinfo', async (req, res) => {
+  let connection;
+  
+  try {
+    connection = await mysql.createConnection(dbConfig);
+    console.log('Connected to database for dbinfo');
+    
+    const dbInfo = {
+      tables: [],
+      alumni_table: null,
+      students_table: null
+    };
+    
+    // Get all tables
+    const [tables] = await connection.execute('SHOW TABLES');
+    dbInfo.tables = tables.map(t => Object.values(t)[0]);
+    
+    // Check for alumni table
+    const alumniTables = dbInfo.tables.filter(t => t.toLowerCase().includes('alumni'));
+    if (alumniTables.length > 0) {
+      dbInfo.alumni_table = alumniTables[0];
+      
+      // Get alumni table structure
+      const [alumniColumns] = await connection.execute(`DESCRIBE ${dbInfo.alumni_table}`);
+      dbInfo.alumni_columns = alumniColumns.map(c => c.Field);
+      
+      // Get count of alumni records
+      const [alumniCount] = await connection.execute(`SELECT COUNT(*) as count FROM ${dbInfo.alumni_table}`);
+      dbInfo.alumni_count = alumniCount[0].count;
+      
+      // Get sample alumni record
+      const [alumniSample] = await connection.execute(`SELECT * FROM ${dbInfo.alumni_table} LIMIT 1`);
+      dbInfo.alumni_sample = alumniSample.length > 0 ? alumniSample[0] : null;
+    }
+    
+    // Check for student table
+    const studentTables = dbInfo.tables.filter(t => 
+      t.toLowerCase().includes('student') || 
+      t.toLowerCase() === 'registrations'
+    );
+    if (studentTables.length > 0) {
+      dbInfo.students_table = studentTables[0];
+      
+      // Get student table structure
+      const [studentColumns] = await connection.execute(`DESCRIBE ${dbInfo.students_table}`);
+      dbInfo.student_columns = studentColumns.map(c => c.Field);
+      
+      // Get count of student records
+      const [studentCount] = await connection.execute(`SELECT COUNT(*) as count FROM ${dbInfo.students_table}`);
+      dbInfo.student_count = studentCount[0].count;
+      
+      // Get sample student record
+      const [studentSample] = await connection.execute(`SELECT * FROM ${dbInfo.students_table} LIMIT 1`);
+      dbInfo.student_sample = studentSample.length > 0 ? studentSample[0] : null;
+    }
+    
+    res.json(dbInfo);
+  } catch (error) {
+    console.error('Error fetching database info:', error);
+    res.status(500).json({ 
+      error: `Failed to fetch database information: ${error.message}`
+    });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+});
+
+// New endpoint to fetch both regular registrations and alumni
+app.get('/api/registrations', async (req, res) => {
+  console.log('Received request for /api/registrations');
+  let connection;
+  
+  try {
+    // Create MySQL connection using the server config
+    console.log('Attempting to connect to database with config:', {
+      host: dbConfig.host,
+      port: dbConfig.port,
+      user: dbConfig.user,
+      database: dbConfig.database,
+    });
+    
+    connection = await mysql.createConnection(dbConfig);
+    console.log('Database connection successful');
+    
+    // Get tables in the database
+    const [tables] = await connection.execute('SHOW TABLES');
+    const tableNames = tables.map(t => Object.values(t)[0]);
+    console.log('Available tables in database:', tableNames);
+    
+    let allRegistrations = [];
+    
+    // SIMPLIFIED SOLUTION: Fetch data directly from both tables
+    
+    // Step 1: Fetch student registrations with explicit student type
+    console.log('Executing query: SELECT *, "student" AS registration_type FROM registrations');
+    const [studentRows] = await connection.execute('SELECT *, "student" AS registration_type FROM registrations');
+    console.log(`Successfully fetched ${studentRows.length} student registrations`);
+    allRegistrations = [...studentRows];
+    
+    // Step 2: Fetch alumni registrations with explicit alumni type
+    console.log('Executing query: SELECT *, "alumni" AS registration_type FROM alumni_registrations');
+    const [alumniRows] = await connection.execute('SELECT *, "alumni" AS registration_type FROM alumni_registrations');
+    console.log(`Successfully fetched ${alumniRows.length} alumni registrations`);
+    
+    // Process alumni data to ensure proper naming and structure
+    const processedAlumniRows = alumniRows.map(row => {
+      // Make sure all alumni have a student_name field for compatibility
+      return {
+        ...row,
+        student_name: row.alumni_name || row.student_name || row.name || 'Unknown Alumni'
+      };
+    });
+    
+    // Add alumni to the combined results
+    allRegistrations = [...allRegistrations, ...processedAlumniRows];
+    
+    // Count and log the breakdown
+    const studentCount = allRegistrations.filter(r => r.registration_type === 'student').length;
+    const alumniCount = allRegistrations.filter(r => r.registration_type === 'alumni').length;
+    console.log(`Total: ${allRegistrations.length} registrations (${studentCount} students, ${alumniCount} alumni)`);
+    
+    // Return the combined results
+    return res.json(allRegistrations);
+    
+  } catch (error) {
+    console.error('Error fetching registrations:', error.message);
+    return res.status(500).json({ 
+      error: `Error fetching registrations: ${error.message}`,
+      details: error.stack
+    });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+});
+
+// New endpoint to fetch attendees from MySQL database
+app.post(['/api/attendees', '/attendees'], async (req, res) => {
+  const { host, port, user, password, database, table } = req.body;
+  
+  console.log('Received database request for table:', table, 'in database:', database);
+  
+  let connection;
+  
+  try {
+    // Create MySQL connection
+    connection = await mysql.createConnection({
+      host,
+      port,
+      user,
+      password,
+      database,
+    });
+    
+    // Query to fetch attendees/tickets with proper error handling
+    try {
+      const [rows] = await connection.execute(`SELECT * FROM ${table} LIMIT 100`);
+      console.log(`Successfully fetched ${rows.length} rows from ${database}.${table}`);
+      
+      // Return the data as JSON
+      res.json(rows);
+    } catch (queryError) {
+      console.error('Query error:', queryError);
+      res.status(400).json({ 
+        error: `Query error: ${queryError.message}`,
+        details: queryError.stack,
+        sqlState: queryError.sqlState,
+        sqlCode: queryError.code
+      });
+    }
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({ 
+      error: `Database error: ${error.message}`,
+      details: error.stack
+    });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+});
+
+// Endpoint to update ticket_generated status in database
+app.post(['/api/update-ticket-status', '/update-ticket-status'], async (req, res) => {
+  const { id, dbConfig, registrationType = 'student' } = req.body;
+  
+  if (!id || !dbConfig) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Missing required parameters' 
+    });
+  }
+  
+  let connection;
+  
+  try {
+    // Create MySQL connection
+    connection = await mysql.createConnection({
+      host: dbConfig.host,
+      port: dbConfig.port,
+      user: dbConfig.user,
+      password: dbConfig.password,
+      database: dbConfig.database,
+    });
+    
+    // Determine the correct table based on registration type
+    const tableName = registrationType === 'alumni' ? 'alumni_registrations' : dbConfig.table || 'registrations';
+    
+    console.log(`Updating ticket status for ID ${id} in table ${tableName}`);
+    
+    // Update ticket_generated status to 'Yes'
+    const [result] = await connection.execute(
+      `UPDATE ${tableName} SET ticket_generated = 'Yes' WHERE id = ?`, 
+      [id]
+    );
+    
+    if (result.affectedRows > 0) {
+      console.log(`Successfully updated ticket status for ID ${id} in ${tableName}`);
+      res.json({ 
+        success: true, 
+        message: 'Ticket status updated successfully',
+        table: tableName,
+        id: id
+      });
+    } else {
+      console.log(`No record found with ID ${id} in table ${tableName}`);
+      res.status(404).json({ 
+        success: false, 
+        error: 'No record found with the given ID',
+        table: tableName,
+        id: id
+      });
+    }
+    
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: `Database update error: ${error.message}`,
+      details: error.stack
+    });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+});
+
+// Add an informational GET endpoint to check if the server is running
+app.get('/', (req, res) => {
+  res.send({
+    status: 'Server is running',
+    endpoints: [
+      '/api/attendees (POST)',
+      '/attendees (POST)',
+      '/api/send-qr-email (POST)',
+      '/send-qr-email (POST)',
+      '/api/update-ticket-status (POST)',
+      '/update-ticket-status (POST)'
+    ]
+  });
+});
+
+// Start server with better logging
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`
+╔════════════════════════════════════════════════╗
+║                                                ║
+║   QR Scanner Server is running successfully!   ║
+║                                                ║
+╚════════════════════════════════════════════════╝
+
+► Server URL:    http://localhost:${port}
+► Test endpoint: http://localhost:${port}/api/test
+► Debug endpoint: http://localhost:${port}/api/dbinfo
+► API endpoints: http://localhost:${port}/api/registrations
+                http://localhost:${port}/api/send-qr-email
+                http://localhost:${port}/api/update-ticket-status
+
+If you see connectivity issues from the frontend, ensure:
+1. This server window remains open
+2. The frontend is trying to connect to http://localhost:${port}
+3. No firewall is blocking connections
+`);
 });
