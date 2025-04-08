@@ -5,11 +5,11 @@
 
 const config = {
   database: {
-    host: 'localhost',
+    host: 'srv1834.hstgr.io',
     port: 3306,
-    user: 'root',         // Change to your MySQL username
-    password: '',         // Change to your MySQL password
-    database: 'majistic2k25',  // Change to your database name
+    user: 'u901957751_majistic',         // Change to your MySQL username
+    password: '#4Szt|/DYj',         // Change to your MySQL password
+    database: 'u901957751_majistic2025',  // Change to your database name
   },
   server: {
     port: 3000

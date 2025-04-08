@@ -1,9 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
-import { ScannerView } from './components/ScannerView';
-import { AdminPanel } from './components/AdminPanel';
-import { CSVUpload } from './components/CSVUpload';
 import { Tickets } from './components/Tickets';
 import Registrations from './components/Registrations';
 import { Navigation } from './components/Navigation';
@@ -16,11 +13,13 @@ function App() {
           <Navigation />
           <div className="container mx-auto px-4 py-8">
             <Routes>
-              <Route path="/" element={<ScannerView />} />
-              <Route path="/admin" element={<AdminPanel />} />
-              <Route path="/upload" element={<CSVUpload />} />
+              {/* Redirect from home to tickets page */}
+              <Route path="/" element={<Navigate to="/tickets" replace />} />
               <Route path="/tickets" element={<Tickets />} />
               <Route path="/registrations" element={<Registrations />} />
+              
+              {/* Fallback for any other routes */}
+              <Route path="*" element={<Navigate to="/tickets" replace />} />
             </Routes>
           </div>
         </div>

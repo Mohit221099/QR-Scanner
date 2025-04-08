@@ -2,11 +2,11 @@ const mysql = require('mysql2/promise');
 
 // Database configuration
 const dbConfig = {
-  host: 'localhost',
-  port: 3306,
-  user: 'root',        // Update with your MySQL username
-  password: '',        // Update with your MySQL password
-  database: 'majistic2k25', // Update with your database name
+  host: 'srv1834.hstgr.io',
+    port: 3306,
+    user: 'u901957751_majistic',         // Change to your MySQL username
+    password: '#4Szt|/DYj',         // Change to your MySQL password
+    database: 'u901957751_majistic2025',  // Change to your database name
 };
 
 async function checkDatabaseConnection() {

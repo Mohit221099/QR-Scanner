@@ -20,8 +20,8 @@ app.use(express.json());
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'drita254@gmail.com', // Your Gmail address
-    pass: 'umkk ibcp vltb eish', // Your Gmail App Password
+    user: 'ticket@majistic.org', // Your Gmail address
+    pass: 'wgvf wjbu xgip mtxc', // Your Gmail App Password
   },
 });
 
@@ -301,40 +301,15 @@ function generateTicketEmailTemplate(name, email, ticketId, date, time) {
         <div class="content">
             <h2>Your Event Ticket <span class="badge">CONFIRMED</span></h2>
             <p>Dear <strong>${name}</strong>,</p>
-            <p>Thank you for registering for maJIStic 2025! Please find your e-ticket attached below. This ticket confirms your participation in the event.</p>
+            <p>Get ready for an unforgettable experience at maJIStic 2025!🥳 <br>Below is your virtual ticket QR code that grants you access to all the amazing events and performances.</p>
             
             <div class="ticket-container">
                 <h3>e-Ticket for maJIStic 2025</h3>
-                <div class="ticket-info">
-                    <div class="ticket-details">
-                        <table>
-                            <tr>
-                                <td>Name</td>
-                                <td><strong>${name}</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Email</td>
-                                <td>${email}</td>
-                            </tr>
-                            <tr>
-                                <td>Ticket Number</td>
-                                <td><strong>${ticketId}</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Issue Date</td>
-                                <td>${date} at ${time}</td>
-                            </tr>
-                            <tr>
-                                <td>Ticket Status</td>
-                                <td><strong style="color: #28a745">CONFIRMED</strong></td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
                 
                 <div class="qr-code">
                     <img src="cid:ticket-qrcode" alt="Ticket QR Code">
                     <div class="ticket-id">${ticketId}</div>
+                    <p style="margin-top: 10px; color: #3498db; font-weight: medium;">This single QR code is valid for check-ins on both event days.</p>
                 </div>
             </div>
             
@@ -357,18 +332,14 @@ function generateTicketEmailTemplate(name, email, ticketId, date, time) {
                 </ul>
             </div>
             
-            <div class="important-notice">
-                <p><strong>IMPORTANT:</strong> College ID is MANDATORY for check-in on event day. No entry without ID.</p>
-            </div>
-            
-            <p>We look forward to seeing you at maJIStic 2025!</p>
+            <p>We look forward to seeing you at maJIStic 2025!🎉</p>
             
             <p>Warm Regards,<br><strong>maJIStic Team</strong></p>
         </div>
         
         <div class="footer">
-            <p>© ${currentYear} maJIStic 2025. All rights reserved.</p>
-            <p>College Ground,JIS College of Engineering, Kalyani, Nadia - 741235, West Bengal, India</p>
+            <p>© ${currentYear} maJIStic. All rights reserved.</p>
+            <p>JIS College of Engineering, Kalyani, Nadia - 741235, West Bengal, India</p>
             <div class="social-links">
                 <a href="https://www.facebook.com/profile.php?id=100090087469753" target="_blank">Facebook</a> |
                 <a href="https://www.instagram.com/majistic_jisce" target="_blank">Instagram</a> |
@@ -384,13 +355,13 @@ function generateTicketEmailTemplate(name, email, ticketId, date, time) {
 // Add MySQL support
 const mysql = require('mysql2/promise');
 
-// Database configuration
+// Database configuration - updating to use online hosting
 const dbConfig = {
-  host: 'localhost',
-  port: 3306,
-  user: 'root',        // Update with your MySQL username
-  password: '',        // Update with your MySQL password
-  database: 'majistic2k25', // Update with your database name
+  host: 'srv1834.hstgr.io',     // Hostinger server hostname
+  port: 3306,                    // MySQL default port
+  user: 'u901957751_majistic',   // Database username
+  password: '#4Szt|/DYj',        // Database password
+  database: 'u901957751_majistic2025', // Database name
 };
 
 // Add a test endpoint to check if server is responsive

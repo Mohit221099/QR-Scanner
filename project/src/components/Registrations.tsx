@@ -231,7 +231,7 @@ const Registrations: React.FC = () => {
           >
             <option value="">All</option>
             <option value="Paid">Paid</option>
-            <option value="Unpaid">Unpaid</option>
+            <option value="Not Paid">Not Paid</option>
           </Select>
         </Box>
         <Box minW="150px">

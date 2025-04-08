@@ -36,9 +36,11 @@ export function Tickets() {
   const [isLoading, setIsLoading] = useState(false);
   const [filteredAttendees, setFilteredAttendees] = useState<ParsedAttendee[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterPayment, setFilterPayment] = useState<string>('');
+  const [filterPayment, setFilterPayment] = useState<string>('Paid'); // Set default to 'Paid'
   const [filterTicket, setFilterTicket] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('');
+  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
+  const [filterDateTo, setFilterDateTo] = useState<string>('');
 
   // Fetch attendees from database
   const fetchAttendees = async () => {
@@ -193,8 +195,33 @@ export function Tickets() {
       result = result.filter((att) => att.registration_type === filterType);
     }
     
+    // Filter by registration date range
+    if (filterDateFrom || filterDateTo) {
+      result = result.filter((att) => {
+        if (!att.registration_date) return false;
+        
+        const regDate = new Date(att.registration_date);
+        
+        // Check if registration date is after the 'from' date (if specified)
+        if (filterDateFrom) {
+          const fromDate = new Date(filterDateFrom);
+          fromDate.setHours(0, 0, 0, 0); // Set to beginning of day
+          if (regDate < fromDate) return false;
+        }
+        
+        // Check if registration date is before the 'to' date (if specified)
+        if (filterDateTo) {
+          const toDate = new Date(filterDateTo);
+          toDate.setHours(23, 59, 59, 999); // Set to end of day
+          if (regDate > toDate) return false;
+        }
+        
+        return true;
+      });
+    }
+    
     setFilteredAttendees(result);
-  }, [searchTerm, filterPayment, filterTicket, filterType, attendees]);
+  }, [searchTerm, filterPayment, filterTicket, filterType, filterDateFrom, filterDateTo, attendees]);
 
   // Load attendees on initial component mount
   useEffect(() => {
@@ -268,16 +295,16 @@ export function Tickets() {
         return newAttendees;
       });
 
-      // Update ticket status in database
+      // Update ticket status in database using online database credentials
       await axios.post(`${apiBaseUrl}/api/update-ticket-status`, {
         id: attendee.id,
         registrationType: attendee.registration_type || 'student',
         dbConfig: {
-          host: 'localhost',
+          host: 'srv1834.hstgr.io',
           port: 3306,
-          user: 'root',
-          password: '',
-          database: 'majistic2k25',
+          user: 'u901957751_majistic',
+          password: '#4Szt|/DYj',
+          database: 'u901957751_majistic2025',
           table: attendee.registration_type === 'alumni' ? 'alumni_registrations' : 'registrations'
         }
       });
@@ -408,6 +435,23 @@ export function Tickets() {
         return newAttendees;
       });
 
+      // Make sure both functions use the online database for consistency
+      // No need to update the database for resends, but if you do need it in the future:
+      /*
+      await axios.post(`${apiBaseUrl}/api/update-ticket-status`, {
+        id: attendee.id,
+        registrationType: attendee.registration_type || 'student',
+        dbConfig: {
+          host: 'srv1834.hstgr.io',
+          port: 3306,
+          user: 'u901957751_majistic',
+          password: '#4Szt|/DYj',
+          database: 'u901957751_majistic2025',
+          table: attendee.registration_type === 'alumni' ? 'alumni_registrations' : 'registrations'
+        }
+      });
+      */
+
       // Show success message
       setStatus({
         success: true,
@@ -486,6 +530,25 @@ export function Tickets() {
             />
           </div>
           <div className="min-w-[150px]">
+            <div className="text-sm text-gray-600 mb-1">Registration Date From</div>
+            <input
+              type="date"
+              value={filterDateFrom}
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          
+          <div className="min-w-[150px]">
+            <div className="text-sm text-gray-600 mb-1">Registration Date To</div>
+            <input
+              type="date"
+              value={filterDateTo}
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          <div className="min-w-[150px]">
             <select
               value={filterPayment}
               onChange={(e) => setFilterPayment(e.target.value)}
@@ -493,7 +556,7 @@ export function Tickets() {
             >
               <option value="">All Payment Status</option>
               <option value="Paid">Paid</option>
-              <option value="Unpaid">Unpaid</option>
+              <option value="Not Paid">Not Paid</option>
             </select>
           </div>
           <div className="min-w-[150px]">
@@ -518,7 +581,59 @@ export function Tickets() {
               <option value="alumni">Alumni</option>
             </select>
           </div>
+          <div className="min-w-[120px] flex items-end">
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setFilterPayment('');
+                setFilterTicket('');
+                setFilterType('');
+                setFilterDateFrom('');
+                setFilterDateTo('');
+              }}
+              className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            >
+              Clear Filters
+            </button>
+          </div>
         </div>
+
+        {/* Active Filters Display */}
+        {(searchTerm || filterPayment || filterTicket || filterType || filterDateFrom || filterDateTo) && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            <div className="text-sm text-gray-500">Active filters:</div>
+            {filterDateFrom && (
+              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+                From: {new Date(filterDateFrom).toLocaleDateString()}
+              </span>
+            )}
+            {filterDateTo && (
+              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+                To: {new Date(filterDateTo).toLocaleDateString()}
+              </span>
+            )}
+            {filterPayment && (
+              <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">
+                Payment: {filterPayment}
+              </span>
+            )}
+            {filterTicket && (
+              <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full">
+                Ticket: {filterTicket}
+              </span>
+            )}
+            {filterType && (
+              <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded-full">
+                Type: {filterType}
+              </span>
+            )}
+            {searchTerm && (
+              <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                Search: "{searchTerm}"
+              </span>
+            )}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="text-center py-12">
