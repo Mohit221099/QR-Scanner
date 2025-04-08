@@ -67,9 +67,9 @@ app.post(['/api/send-qr-email', '/send-qr-email'], async (req, res) => {
     
     // Email content
     const mailOptions = {
-      from: '"maJIStic 2025" <noreply@majistic.org>',
+      from: '"maJIStic 2k25" <noreply@majistic.org>',
       to: email,
-      subject: 'Your maJIStic 2025 Event Ticket',
+      subject: 'Your maJIStic 2k25 Event Ticket',
       html: generateTicketEmailTemplate(name, email, ticketId, currentDate, currentTime),
       attachments: [
         {
@@ -295,16 +295,16 @@ function generateTicketEmailTemplate(name, email, ticketId, date, time) {
 <body>
     <div class="email-container">
         <div class="header">
-            <img src="cid:majistic-logo" alt="maJIStic 2025 Logo">
+            <img src="cid:majistic-logo" alt="maJIStic 2k25 Logo">
         </div>
         
         <div class="content">
             <h2>Your Event Ticket <span class="badge">CONFIRMED</span></h2>
             <p>Dear <strong>${name}</strong>,</p>
-            <p>Get ready for an unforgettable experience at maJIStic 2025!🥳 <br>Below is your virtual ticket QR code that grants you access to all the amazing events and performances.</p>
+            <p>Get ready for an unforgettable experience at maJIStic 2k25!🥳 <br>Below is your virtual ticket QR code that grants you access to all the amazing events and performances.</p>
             
             <div class="ticket-container">
-                <h3>e-Ticket for maJIStic 2025</h3>
+                <h3>e-Ticket for maJIStic 2k25</h3>
                 
                 <div class="qr-code">
                     <img src="cid:ticket-qrcode" alt="Ticket QR Code">
